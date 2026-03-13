@@ -2,7 +2,8 @@
 FROM golang:1.24 as builder
 
 ENV GO111MODULE=on \
-    GOPROXY=https://goproxy.cn,direct
+    GOPROXY=https://goproxy.cn,direct \
+    GOTOOLCHAIN=auto
 
 WORKDIR /app
 
