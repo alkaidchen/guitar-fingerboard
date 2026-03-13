@@ -1,0 +1,10 @@
+services:
+  guitar-fingerboard:
+    container_name: guitar-fingerboard
+    image: guitar-fingerboard:latest
+    build: .
+    ports:
+      - "${PORT:-8080}:8080"
+    environment:
+      - PORT=8080
+    restart: unless-stopped

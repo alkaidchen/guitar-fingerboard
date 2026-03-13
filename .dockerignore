@@ -1,0 +1,5 @@
+guitar-fingerboard
+*.exe
+.git
+.gitignore
+.dockerignore

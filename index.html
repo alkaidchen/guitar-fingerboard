@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>吉他指板学习</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #1a1a2e;
+    --surface: #16213e;
+    --text: #e0e0e0;
+    --accent: #e94560;
+    --wrong: #e74c3c;
+    --fret-wire: #c0c0c0;
+    --string-color: #d4a574;
+    --nut-color: #f0e6d3;
+    --input-bg: rgba(255, 255, 255, 0.1);
+    --cell-width: clamp(44px, 6.8vw, 74px);
+    --cell-height: clamp(30px, 4.2vw, 46px);
+    --font-size: clamp(10px, 1.8vw, 16px);
+    --dot-size: clamp(7px, 1.1vw, 13px);
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1rem;
+  }
+
+  h1 {
+    font-size: clamp(1.2rem, 4vw, 2rem);
+    margin-bottom: 0.8rem;
+    letter-spacing: 0.05em;
+    color: #fff;
+  }
+
+  .toolbar {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1.2rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .toolbar button {
+    padding: 0.5em 1.4em;
+    border: none;
+    border-radius: 6px;
+    font-size: clamp(0.8rem, 2vw, 1rem);
+    cursor: pointer;
+    font-weight: 600;
+    transition: transform 0.1s, box-shadow 0.2s;
+  }
+
+  .toolbar button:active { transform: scale(0.96); }
+
+  .btn-reset { background: #e74c3c; color: #fff; }
+  .btn-hint  { background: #3498db; color: #fff; }
+  .btn-hint.active { background: #e67e22; }
+  .btn-mode  { background: #9b59b6; color: #fff; }
+
+  .fingerboard-wrapper {
+    width: 100%;
+    max-width: 1020px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 0.5rem;
+  }
+
+  .fingerboard {
+    display: grid;
+    grid-template-columns: repeat(13, var(--cell-width));
+    grid-template-rows: repeat(6, var(--cell-height));
+    gap: 0;
+    min-width: fit-content;
+    margin: 0 auto;
+  }
+
+  .fret-cell {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface);
+    border-right: 2px solid var(--fret-wire);
+  }
+
+  .fret-cell::before {
+    content: '';
+    position: absolute;
+    left: 0; right: 0;
+    top: 50%;
+    height: 2px;
+    transform: translateY(-50%);
+    background: var(--string-color);
+    opacity: 0.5;
+    z-index: 0;
+  }
+
+  .fret-cell.open-cell {
+    border-right: 4px solid var(--nut-color);
+    background: rgba(240, 230, 211, 0.05);
+  }
+
+  .fret-cell.open-cell::before {
+    display: none;
+  }
+
+  /* white dot markers between rows */
+  .fret-cell.dot-mark {
+    z-index: 1;
+  }
+
+  .fret-cell.dot-mark::after {
+    content: '';
+    position: absolute;
+    width: var(--dot-size);
+    height: var(--dot-size);
+    border-radius: 50%;
+    background: #ede8dc;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.12), 0 0 5px rgba(237,232,220,0.25);
+    bottom: calc(-0.5 * var(--dot-size));
+    left: 50%;
+    transform: translateX(-50%);
+    pointer-events: none;
+    z-index: 5;
+  }
+
+  .fret-cell input {
+    width: 85%;
+    height: 70%;
+    border: 2px solid rgba(255, 255, 255, 0.45);
+    border-radius: 4px;
+    background: var(--input-bg);
+    color: #fff;
+    text-align: center;
+    font-size: var(--font-size);
+    font-weight: 600;
+    outline: none;
+    position: relative;
+    z-index: 1;
+    opacity: 0.35;
+    transition: border-color 0.2s, background-color 0.2s, opacity 0.2s;
+  }
+
+  .fret-cell input:focus {
+    opacity: 1;
+    border-color: #fff;
+    background: rgba(255, 255, 255, 0.15);
+  }
+
+  .fret-cell input.has-value {
+    opacity: 1;
+  }
+
+  .fret-cell input.wrong {
+    opacity: 1;
+    border-color: var(--wrong);
+    background: rgba(231, 76, 60, 0.2);
+    color: #f7a9a2;
+  }
+
+  .fret-cell input.hint-shown {
+    opacity: 1;
+    border-color: #e67e22;
+    background: rgba(230, 126, 34, 0.15);
+    color: #e67e22;
+  }
+
+  .stats {
+    margin-top: 1rem;
+    font-size: clamp(0.75rem, 2vw, 0.95rem);
+    color: #888;
+    text-align: center;
+  }
+
+  .stats span { font-weight: 700; }
+  .stats .green { color: #2ecc71; }
+  .stats .red { color: var(--wrong); }
+
+  @media (max-width: 600px) {
+    :root {
+      --cell-width: clamp(36px, 7.2vw, 52px);
+      --cell-height: clamp(26px, 5vw, 38px);
+      --font-size: clamp(9px, 2.5vw, 13px);
+      --dot-size: clamp(6px, 1.5vw, 10px);
+    }
+    body { padding: 0.5rem; }
+    h1 { margin-bottom: 0.3rem; }
+  }
+
+  @media (max-width: 600px) and (orientation: portrait) {
+    :root {
+      --cell-width: clamp(32px, 7vw, 46px);
+      --cell-height: clamp(24px, 4.5vw, 34px);
+      --font-size: clamp(8px, 2.2vw, 12px);
+    }
+  }
+
+  @media (min-width: 601px) and (max-width: 1024px) {
+    :root {
+      --cell-width: clamp(44px, 7vw, 68px);
+      --cell-height: clamp(30px, 4.5vw, 46px);
+      --font-size: clamp(11px, 1.8vw, 15px);
+    }
+  }
+
+  @media (orientation: landscape) and (max-height: 500px) {
+    body { padding: 0.3rem; }
+    h1 { font-size: 1.1rem; margin-bottom: 0.2rem; }
+    .toolbar { margin-bottom: 0.5rem; }
+    :root {
+      --cell-width: clamp(40px, 6vw, 60px);
+      --cell-height: clamp(26px, 4vh, 38px);
+      --font-size: clamp(9px, 1.6vw, 13px);
+      --dot-size: clamp(5px, 0.8vw, 10px);
+    }
+  }
+</style>
+</head>
+<body>
+
+<h1>吉他指板学习</h1>
+
+<div class="toolbar">
+  <button class="btn-mode" id="btnMode">自然音级</button>
+  <button class="btn-reset" id="btnReset">重置</button>
+  <button class="btn-hint" id="btnHint">提示</button>
+</div>
+
+<div class="fingerboard-wrapper">
+  <div class="fingerboard" id="fingerboard"></div>
+</div>
+
+<div class="stats" id="stats"></div>
+
+<script>
+  const STRINGS = [
+    { notes: ['E','F','F#','G','G#','A','A#','B','C','C#','D','D#','E'] },
+    { notes: ['B','C','C#','D','D#','E','F','F#','G','G#','A','A#','B'] },
+    { notes: ['G','G#','A','A#','B','C','C#','D','D#','E','F','F#','G'] },
+    { notes: ['D','D#','E','F','F#','G','G#','A','A#','B','C','C#','D'] },
+    { notes: ['A','A#','B','C','C#','D','D#','E','F','F#','G','G#','A'] },
+    { notes: ['E','F','F#','G','G#','A','A#','B','C','C#','D','D#','E'] },
+  ];
+
+  const NATURAL_NOTES = new Set(['C','D','E','F','G','A','B']);
+  const COLS_PER_ROW = 13;
+  const SINGLE_DOT_FRETS = [3, 5, 7, 9];
+  const DOUBLE_DOT_FRET = 12;
+
+  const board    = document.getElementById('fingerboard');
+  const btnReset = document.getElementById('btnReset');
+  const btnHint  = document.getElementById('btnHint');
+  const btnMode  = document.getElementById('btnMode');
+  const statsEl  = document.getElementById('stats');
+
+  let hintActive = false;
+  let mode = 'natural';
+  const userValues = {};
+
+  function isNatural(si, fi) {
+    return NATURAL_NOTES.has(STRINGS[si].notes[fi]);
+  }
+
+  function isRelevant(si, fi) {
+    return mode === 'all' || isNatural(si, fi);
+  }
+
+  function getTotal() {
+    let count = 0;
+    STRINGS.forEach((str, si) => {
+      for (let fi = 0; fi < COLS_PER_ROW; fi++) {
+        if (isRelevant(si, fi)) count++;
+      }
+    });
+    return count;
+  }
+
+  function buildBoard() {
+    board.innerHTML = '';
+
+    STRINGS.forEach((str, si) => {
+      for (let fi = 0; fi < COLS_PER_ROW; fi++) {
+        const cell = document.createElement('div');
+        cell.className = 'fret-cell';
+
+        if (fi === 0) cell.classList.add('open-cell');
+
+        if (SINGLE_DOT_FRETS.includes(fi) && si === 2) {
+          cell.classList.add('dot-mark');
+        }
+        if (fi === DOUBLE_DOT_FRET && (si === 1 || si === 3)) {
+          cell.classList.add('dot-mark');
+        }
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.maxLength = 2;
+        input.setAttribute('autocomplete', 'off');
+        input.setAttribute('autocorrect', 'off');
+        input.setAttribute('autocapitalize', 'off');
+        input.setAttribute('spellcheck', 'false');
+        input.dataset.string = si;
+        input.dataset.fret = fi;
+
+        input.addEventListener('input', onInput);
+        input.addEventListener('keydown', onKeyDown);
+
+        cell.appendChild(input);
+        board.appendChild(cell);
+      }
+    });
+
+    updateStats();
+  }
+
+  function normalize(val) {
+    return val.trim().replace(/♯|＃/g, '#').replace(/♭/g, 'b');
+  }
+
+  function isCorrect(si, fi, value) {
+    const correct = STRINGS[si].notes[fi].toUpperCase();
+    const v = normalize(value).toUpperCase();
+    if (v === correct) return true;
+    const enharmonic = {
+      'C#': 'DB', 'D#': 'EB', 'F#': 'GB', 'G#': 'AB', 'A#': 'BB',
+      'DB': 'C#', 'EB': 'D#', 'GB': 'F#', 'AB': 'G#', 'BB': 'A#',
+    };
+    return enharmonic[v] === correct || enharmonic[correct] === v;
+  }
+
+  function onInput(e) {
+    const input = e.target;
+    const si = +input.dataset.string;
+    const fi = +input.dataset.fret;
+    const val = input.value;
+    userValues[`${si}-${fi}`] = val;
+
+    const hasVal = val.trim() !== '';
+    input.classList.toggle('has-value', hasVal);
+    input.classList.remove('wrong');
+    if (hasVal && !isCorrect(si, fi, val)) {
+      input.classList.add('wrong');
+    }
+    updateStats();
+  }
+
+  function onKeyDown(e) {
+    const si = +e.target.dataset.string;
+    const fi = +e.target.dataset.fret;
+    const allInputs = [...board.querySelectorAll('input')];
+    const idx = si * COLS_PER_ROW + fi;
+
+    let nextIdx = -1;
+    if (e.key === 'ArrowRight' || (e.key === 'Tab' && !e.shiftKey)) {
+      e.preventDefault();
+      nextIdx = (idx + 1) % allInputs.length;
+    } else if (e.key === 'ArrowLeft' || (e.key === 'Tab' && e.shiftKey)) {
+      e.preventDefault();
+      nextIdx = (idx - 1 + allInputs.length) % allInputs.length;
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      nextIdx = idx + COLS_PER_ROW < allInputs.length ? idx + COLS_PER_ROW : idx;
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      nextIdx = idx - COLS_PER_ROW >= 0 ? idx - COLS_PER_ROW : idx;
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      nextIdx = (idx + 1) % allInputs.length;
+    }
+
+    if (nextIdx >= 0 && nextIdx < allInputs.length) {
+      allInputs[nextIdx].focus();
+      allInputs[nextIdx].select();
+    }
+  }
+
+  function resetBoard() {
+    board.querySelectorAll('input').forEach(input => {
+      input.value = '';
+      input.classList.remove('wrong', 'hint-shown', 'has-value');
+      input.readOnly = false;
+    });
+    Object.keys(userValues).forEach(k => delete userValues[k]);
+    hintActive = false;
+    btnHint.classList.remove('active');
+    btnHint.textContent = '提示';
+    updateStats();
+  }
+
+  function toggleHint() {
+    hintActive = !hintActive;
+    const inputs = board.querySelectorAll('input');
+
+    if (hintActive) {
+      btnHint.classList.add('active');
+      btnHint.textContent = '取消提示';
+      inputs.forEach(input => {
+        const si = +input.dataset.string;
+        const fi = +input.dataset.fret;
+        const key = `${si}-${fi}`;
+        if (!(key in userValues)) userValues[key] = input.value;
+
+        if (isRelevant(si, fi)) {
+          input.value = STRINGS[si].notes[fi];
+          input.classList.remove('wrong', 'has-value');
+          input.classList.add('hint-shown');
+        } else {
+          input.classList.remove('wrong', 'has-value', 'hint-shown');
+        }
+        input.readOnly = true;
+      });
+    } else {
+      btnHint.classList.remove('active');
+      btnHint.textContent = '提示';
+      inputs.forEach(input => {
+        const si = +input.dataset.string;
+        const fi = +input.dataset.fret;
+        const key = `${si}-${fi}`;
+        const saved = userValues[key] || '';
+        input.value = saved;
+        input.classList.remove('hint-shown');
+        input.readOnly = false;
+
+        const hasVal = saved.trim() !== '';
+        input.classList.toggle('has-value', hasVal);
+        input.classList.remove('wrong');
+        if (hasVal && !isCorrect(si, fi, saved)) {
+          input.classList.add('wrong');
+        }
+      });
+    }
+    updateStats();
+  }
+
+  function toggleMode() {
+    mode = mode === 'natural' ? 'all' : 'natural';
+    btnMode.textContent = mode === 'natural' ? '自然音级' : '衍生音级';
+
+    if (hintActive) {
+      toggleHint();
+    }
+
+    updateStats();
+  }
+
+  function updateStats() {
+    const inputs = board.querySelectorAll('input');
+    let filled = 0, correct = 0, wrong = 0;
+    const total = getTotal();
+
+    inputs.forEach(input => {
+      const si = +input.dataset.string;
+      const fi = +input.dataset.fret;
+      if (!isRelevant(si, fi)) return;
+
+      const val = hintActive ? (userValues[`${si}-${fi}`] || '') : input.value;
+      if (val.trim() !== '') {
+        filled++;
+        if (isCorrect(si, fi, val)) correct++; else wrong++;
+      }
+    });
+    statsEl.innerHTML = `已填写 <span>${filled}</span> / ${total} &nbsp;|&nbsp; <span class="green">正确 ${correct}</span> &nbsp;|&nbsp; <span class="red">错误 ${wrong}</span>`;
+  }
+
+  btnReset.addEventListener('click', resetBoard);
+  btnHint.addEventListener('click', toggleHint);
+  btnMode.addEventListener('click', toggleMode);
+  buildBoard();
+</script>
+</body>
+</html>
