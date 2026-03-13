@@ -3,6 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1a1a2e">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎸</text></svg>">
+<link rel="apple-touch-icon" href="/icon.svg">
+<link rel="manifest" href="/manifest.json">
 <title>吉他指板学习</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -65,6 +72,8 @@
   .btn-hint  { background: #3498db; color: #fff; }
   .btn-hint.active { background: #e67e22; }
   .btn-mode  { background: #9b59b6; color: #fff; }
+  .btn-challenge { background: #27ae60; color: #fff; }
+  .btn-challenge.active { background: #f39c12; }
 
   .fingerboard-wrapper {
     width: 100%;
@@ -165,9 +174,9 @@
 
   .note-cell.selected {
     opacity: 1;
-    border-color: var(--accent);
-    background: rgba(233, 69, 96, 0.2);
-    box-shadow: 0 0 8px rgba(233, 69, 96, 0.4);
+    border-color: #fff;
+    background: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
   }
 
   .note-cell.has-value {
@@ -179,6 +188,27 @@
     border-color: var(--wrong);
     background: rgba(231, 76, 60, 0.2);
     color: #f7a9a2;
+  }
+
+  .note-cell.correct-flash {
+    opacity: 1;
+    border-color: #2ecc71;
+    background: rgba(46, 204, 113, 0.25);
+    color: #2ecc71;
+    transition: none;
+  }
+
+  .note-cell.challenge-target {
+    opacity: 1;
+    border-color: #f1c40f;
+    background: rgba(241, 196, 15, 0.2);
+    box-shadow: 0 0 12px rgba(241, 196, 15, 0.5);
+    animation: challengePulse 1.2s ease-in-out infinite;
+  }
+
+  @keyframes challengePulse {
+    0%, 100% { box-shadow: 0 0 6px rgba(241, 196, 15, 0.3); }
+    50% { box-shadow: 0 0 16px rgba(241, 196, 15, 0.7); }
   }
 
   .note-cell.hint-shown {
@@ -208,7 +238,7 @@
     max-width: 480px;
     background: #1e2a4a;
     border-radius: 16px 16px 0 0;
-    padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom, 0px));
+    padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom, 0px));
     animation: pickerSlideUp 0.22s ease-out;
     box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.5);
   }
@@ -218,46 +248,15 @@
     to   { transform: translateY(0); }
   }
 
-  .picker-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.75rem;
-    padding-bottom: 0.6rem;
-    border-bottom: 1px solid rgba(255,255,255,0.1);
-  }
-
-  .picker-title {
-    font-size: 1rem;
-    font-weight: 600;
-    color: #fff;
-  }
-
-  .picker-close {
-    width: 32px;
-    height: 32px;
-    border: none;
-    border-radius: 50%;
-    background: rgba(255,255,255,0.1);
-    color: #fff;
-    font-size: 1.1rem;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.15s;
-    -webkit-tap-highlight-color: transparent;
-  }
-
-  .picker-close:active {
-    background: rgba(255,255,255,0.25);
-  }
-
   .picker-section-label {
     font-size: 0.75rem;
     color: #888;
     margin-bottom: 0.35rem;
-    margin-top: 0.6rem;
+    margin-top: 0.5rem;
+  }
+
+  .picker-section-label:first-child {
+    margin-top: 0;
   }
 
   .picker-notes {
@@ -305,18 +304,15 @@
     color: #fff;
   }
 
-  .picker-footer {
-    margin-top: 0.75rem;
-  }
-
   .picker-clear {
     width: 100%;
-    height: 42px;
+    height: 38px;
+    margin-top: 0.5rem;
     border: 2px solid rgba(231, 76, 60, 0.35);
     border-radius: 8px;
     background: rgba(231, 76, 60, 0.08);
     color: #e74c3c;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.1s;
@@ -326,6 +322,122 @@
   .picker-clear:active {
     background: #e74c3c;
     color: #fff;
+  }
+
+  /* ---- Portrait warning overlay ---- */
+  .portrait-warning {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: var(--bg);
+    z-index: 9999;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    color: #fff;
+  }
+
+  .portrait-warning .rotate-icon {
+    font-size: 3rem;
+    animation: rotateHint 1.5s ease-in-out infinite;
+  }
+
+  @keyframes rotateHint {
+    0%, 100% { transform: rotate(0deg); }
+    50% { transform: rotate(90deg); }
+  }
+
+  .portrait-warning p {
+    font-size: 1rem;
+    color: #888;
+  }
+
+  /* ---- Celebration overlay ---- */
+  .celebration-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 200;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .celebration-overlay.active {
+    display: flex;
+    animation: celebFadeIn 0.4s ease-out;
+  }
+
+  @keyframes celebFadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  .celebration-overlay .celeb-emoji {
+    font-size: 4rem;
+    animation: celebBounce 0.6s ease-out;
+  }
+
+  @keyframes celebBounce {
+    0%   { transform: scale(0) rotate(-20deg); }
+    50%  { transform: scale(1.3) rotate(5deg); }
+    100% { transform: scale(1) rotate(0deg); }
+  }
+
+  .celebration-overlay .celeb-text {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #fff;
+    animation: celebSlideUp 0.5s ease-out 0.2s both;
+  }
+
+  @keyframes celebSlideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .celebration-overlay .celeb-sub {
+    font-size: 0.85rem;
+    color: #888;
+    animation: celebSlideUp 0.5s ease-out 0.4s both;
+  }
+
+  .confetti-container {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .confetti {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    top: -10px;
+    animation: confettiFall linear forwards;
+  }
+
+  @keyframes confettiFall {
+    0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+  }
+
+  @media (orientation: portrait) {
+    .portrait-warning { display: flex; }
+  }
+
+  @media (orientation: landscape) {
+    .portrait-warning { display: none !important; }
+  }
+
+  .sidebar {
+    display: contents;
   }
 
   .stats {
@@ -366,45 +478,135 @@
     }
   }
 
-  @media (orientation: landscape) and (max-height: 500px) {
-    body { padding: 0.3rem; }
-    h1 { font-size: 1.1rem; margin-bottom: 0.2rem; }
-    .toolbar { margin-bottom: 0.5rem; }
+  /* ---- Landscape (mobile): top bar + fingerboard ---- */
+  @media (orientation: landscape) and (max-height: 600px) {
     :root {
-      --cell-width: clamp(40px, 6vw, 60px);
-      --cell-height: clamp(26px, 4vh, 38px);
-      --font-size: clamp(9px, 1.6vw, 13px);
-      --dot-size: clamp(5px, 0.8vw, 10px);
+      --pad: 0.25rem;
+      --topbar-h: 36px;
+      --topbar-gap: 0.4rem;
+      --cell-width: calc((100vw - 2 * var(--pad)) / 13);
+      --cell-height: calc(var(--cell-width) * 0.55);
+      --font-size: clamp(10px, 2vw, 15px);
+      --dot-size: clamp(6px, 1vw, 12px);
+    }
+
+    body {
+      flex-direction: column;
+      height: 100dvh;
+      overflow: hidden;
+      padding: var(--pad);
+      gap: 0;
+    }
+
+    h1 { display: none; }
+
+    .sidebar {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      height: var(--topbar-h);
+      flex-shrink: 0;
+      margin-bottom: var(--topbar-gap);
+    }
+
+    .toolbar {
+      flex-direction: row;
+      gap: 0.4rem;
+      margin-bottom: 0;
+    }
+
+    .toolbar button {
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      border-radius: 8px;
+      font-size: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn-mode::before  { content: '♮'; font-size: 1.1rem; }
+    .btn-mode.all-mode::before { content: '♯'; }
+    .btn-reset::before { content: '↺'; font-size: 1.1rem; }
+    .btn-hint::before  { content: '?'; font-size: 1.1rem; font-weight: 700; }
+    .btn-hint.active::before { content: '✕'; }
+    .btn-challenge::before { content: '🎯'; font-size: 1rem; }
+    .btn-challenge.active::before { content: '⏹'; }
+
+    .fingerboard-wrapper {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      padding-bottom: 0;
+    }
+
+    .fingerboard {
+      min-width: 0;
+    }
+
+    .stats {
+      margin-top: 0;
+      font-size: 0.85rem;
+      line-height: var(--topbar-h);
+      white-space: nowrap;
+    }
+
+    .note-picker-overlay {
+      align-items: center;
+    }
+
+    .note-picker {
+      border-radius: 12px;
+      max-width: 360px;
+      animation: pickerFadeIn 0.2s ease-out;
+    }
+
+    @keyframes pickerFadeIn {
+      from { opacity: 0; transform: scale(0.92); }
+      to   { opacity: 1; transform: scale(1); }
     }
   }
 </style>
 </head>
 <body>
 
+<div class="celebration-overlay" id="celebrationOverlay">
+  <div class="confetti-container" id="confettiContainer"></div>
+  <div class="celeb-emoji">🎉</div>
+  <div class="celeb-text">全部正确！</div>
+  <div class="celeb-sub">点击任意位置关闭</div>
+</div>
+
+<div class="portrait-warning">
+  <div class="rotate-icon">📱</div>
+  <p>请旋转设备至横屏使用</p>
+</div>
+
 <h1>吉他指板学习</h1>
 
-<div class="toolbar">
-  <button class="btn-mode" id="btnMode">自然音级</button>
-  <button class="btn-reset" id="btnReset">重置</button>
-  <button class="btn-hint" id="btnHint">提示</button>
+<div class="sidebar">
+  <div class="toolbar">
+    <button class="btn-mode" id="btnMode">自然音级</button>
+    <button class="btn-reset" id="btnReset">重置</button>
+    <button class="btn-hint" id="btnHint">提示</button>
+    <button class="btn-challenge" id="btnChallenge">挑战</button>
+  </div>
+  <div class="stats" id="stats"></div>
 </div>
 
 <div class="fingerboard-wrapper">
   <div class="fingerboard" id="fingerboard"></div>
 </div>
 
-<div class="stats" id="stats"></div>
-
 <div class="note-picker-overlay" id="notePickerOverlay">
   <div class="note-picker" id="notePicker">
-    <div class="picker-header">
-      <span class="picker-title">选择音名</span>
-      <button class="picker-close" id="pickerClose">✕</button>
-    </div>
     <div id="pickerBody"></div>
-    <div class="picker-footer">
-      <button class="picker-clear" id="pickerClear">清除</button>
-    </div>
+    <button class="picker-clear" id="pickerClear">清除</button>
   </div>
 </div>
 
@@ -426,20 +628,22 @@
   const SINGLE_DOT_FRETS = [3, 5, 7, 9];
   const DOUBLE_DOT_FRET  = 12;
 
-  const board      = document.getElementById('fingerboard');
-  const btnReset   = document.getElementById('btnReset');
-  const btnHint    = document.getElementById('btnHint');
-  const btnMode    = document.getElementById('btnMode');
-  const statsEl    = document.getElementById('stats');
-  const overlay    = document.getElementById('notePickerOverlay');
-  const pickerBody = document.getElementById('pickerBody');
-  const pickerClose = document.getElementById('pickerClose');
-  const pickerClear = document.getElementById('pickerClear');
+  const board        = document.getElementById('fingerboard');
+  const btnReset     = document.getElementById('btnReset');
+  const btnHint      = document.getElementById('btnHint');
+  const btnMode      = document.getElementById('btnMode');
+  const btnChallenge = document.getElementById('btnChallenge');
+  const statsEl      = document.getElementById('stats');
+  const overlay      = document.getElementById('notePickerOverlay');
+  const pickerBody   = document.getElementById('pickerBody');
+  const pickerClear  = document.getElementById('pickerClear');
 
   let hintActive = false;
   let mode = 'natural';
   const userValues = {};
   let selectedCell = null;
+  let challengeActive = false;
+  let challengeCell = null;
 
   function isNatural(si, fi) {
     return NATURAL_NOTES.has(STRINGS[si].notes[fi]);
@@ -525,6 +729,9 @@
     const el = e.currentTarget;
     const si = +el.dataset.string;
     const fi = +el.dataset.fret;
+    if (challengeActive) {
+      if (!challengeCell || challengeCell.si !== si || challengeCell.fi !== fi) return;
+    }
     openPicker(si, fi, el);
   }
 
@@ -599,23 +806,32 @@
     userValues[`${si}-${fi}`] = note;
 
     el.classList.add('has-value');
-    el.classList.remove('wrong');
-    if (!isCorrect(si, fi, note)) {
+    el.classList.remove('wrong', 'correct-flash');
+
+    const correct = isCorrect(si, fi, note);
+    if (correct) {
+      el.classList.add('correct-flash');
+      setTimeout(() => el.classList.remove('correct-flash'), 1000);
+    } else {
       el.classList.add('wrong');
     }
 
     closePicker();
     updateStats();
+
+    if (challengeActive && correct) {
+      setTimeout(() => {
+        if (challengeActive) highlightNextChallenge();
+      }, 300);
+    }
   }
 
   function clearSelectedCell() {
     if (!selectedCell) return;
     const { si, fi, el } = selectedCell;
-
     setCellValue(el, '');
     delete userValues[`${si}-${fi}`];
     el.classList.remove('has-value', 'wrong');
-
     closePicker();
     updateStats();
   }
@@ -710,12 +926,14 @@
   /* ---- Board actions ---- */
 
   function resetBoard() {
+    if (challengeActive) toggleChallenge();
     board.querySelectorAll('.note-cell').forEach(el => {
       setCellValue(el, '');
-      el.classList.remove('wrong', 'hint-shown', 'has-value', 'selected');
+      el.classList.remove('wrong', 'hint-shown', 'has-value', 'selected', 'correct-flash', 'challenge-target');
     });
     Object.keys(userValues).forEach(k => delete userValues[k]);
     hintActive = false;
+    celebrationShown = false;
     btnHint.classList.remove('active');
     btnHint.textContent = '提示';
     updateStats();
@@ -765,8 +983,10 @@
   }
 
   function toggleMode() {
+    if (challengeActive) toggleChallenge();
     mode = mode === 'natural' ? 'all' : 'natural';
     btnMode.textContent = mode === 'natural' ? '自然音级' : '衍生音级';
+    btnMode.classList.toggle('all-mode', mode === 'all');
 
     if (hintActive) {
       toggleHint();
@@ -775,9 +995,11 @@
     updateStats();
   }
 
+  let celebrationShown = false;
+
   function updateStats() {
     const cells = board.querySelectorAll('.note-cell');
-    let filled = 0, correct = 0, wrong = 0;
+    let correct = 0;
     const total = getTotal();
 
     cells.forEach(el => {
@@ -786,15 +1008,94 @@
       if (!isRelevant(si, fi)) return;
 
       const val = hintActive ? (userValues[`${si}-${fi}`] || '') : getCellValue(el);
-      if (val.trim() !== '') {
-        filled++;
-        if (isCorrect(si, fi, val)) correct++; else wrong++;
-      }
+      if (val.trim() !== '' && isCorrect(si, fi, val)) correct++;
     });
-    statsEl.innerHTML = `已填写 <span>${filled}</span> / ${total} &nbsp;|&nbsp; <span class="green">正确 ${correct}</span> &nbsp;|&nbsp; <span class="red">错误 ${wrong}</span>`;
+    statsEl.innerHTML = `<span class="green">${correct}</span> / ${total}`;
+
+    if (correct === total && total > 0 && !hintActive && !celebrationShown) {
+      celebrationShown = true;
+      setTimeout(() => showCelebration(), 600);
+    }
+    if (correct < total) {
+      celebrationShown = false;
+    }
   }
 
-  pickerClose.addEventListener('click', closePicker);
+  function showCelebration() {
+    const overlay = document.getElementById('celebrationOverlay');
+    const container = document.getElementById('confettiContainer');
+    container.innerHTML = '';
+
+    const colors = ['#e94560', '#2ecc71', '#3498db', '#f1c40f', '#9b59b6', '#e67e22', '#1abc9c'];
+    for (let i = 0; i < 60; i++) {
+      const piece = document.createElement('div');
+      piece.className = 'confetti';
+      piece.style.left = Math.random() * 100 + '%';
+      piece.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+      piece.style.animationDuration = (1.5 + Math.random() * 2) + 's';
+      piece.style.animationDelay = Math.random() * 1.5 + 's';
+      piece.style.width = (5 + Math.random() * 6) + 'px';
+      piece.style.height = (5 + Math.random() * 6) + 'px';
+      container.appendChild(piece);
+    }
+
+    overlay.classList.add('active');
+  }
+
+  function hideCelebration() {
+    document.getElementById('celebrationOverlay').classList.remove('active');
+  }
+
+  document.getElementById('celebrationOverlay').addEventListener('click', hideCelebration);
+
+  /* ---- Challenge mode ---- */
+
+  function toggleChallenge() {
+    challengeActive = !challengeActive;
+
+    if (challengeActive) {
+      btnChallenge.classList.add('active');
+      btnChallenge.textContent = '退出挑战';
+      highlightNextChallenge();
+    } else {
+      btnChallenge.classList.remove('active');
+      btnChallenge.textContent = '挑战';
+      if (challengeCell) {
+        const cell = board.querySelector(`.note-cell[data-string="${challengeCell.si}"][data-fret="${challengeCell.fi}"]`);
+        if (cell) cell.classList.remove('challenge-target');
+      }
+      challengeCell = null;
+    }
+  }
+
+  function highlightNextChallenge() {
+    if (challengeCell) {
+      const prev = board.querySelector(`.note-cell[data-string="${challengeCell.si}"][data-fret="${challengeCell.fi}"]`);
+      if (prev) prev.classList.remove('challenge-target');
+    }
+
+    const candidates = [];
+    board.querySelectorAll('.note-cell').forEach(el => {
+      const si = +el.dataset.string;
+      const fi = +el.dataset.fret;
+      if (!isRelevant(si, fi)) return;
+      const val = getCellValue(el);
+      if (val.trim() === '' || !isCorrect(si, fi, val)) {
+        candidates.push({ si, fi, el });
+      }
+    });
+
+    if (candidates.length === 0) {
+      toggleChallenge();
+      return;
+    }
+
+    const pick = candidates[Math.floor(Math.random() * candidates.length)];
+    challengeCell = pick;
+    pick.el.classList.add('challenge-target');
+    pick.el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+  }
+
   pickerClear.addEventListener('click', clearSelectedCell);
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay) closePicker();
@@ -803,7 +1104,10 @@
   btnReset.addEventListener('click', resetBoard);
   btnHint.addEventListener('click', toggleHint);
   btnMode.addEventListener('click', toggleMode);
+  btnChallenge.addEventListener('click', toggleChallenge);
   buildBoard();
+
+  screen.orientation?.lock?.('landscape').catch(() => {});
 </script>
 </body>
 </html>
