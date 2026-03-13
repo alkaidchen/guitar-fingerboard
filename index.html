@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>吉他指板学习</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -113,7 +113,6 @@
     display: none;
   }
 
-  /* white dot markers between rows */
   .fret-cell.dot-mark {
     z-index: 1;
   }
@@ -133,7 +132,7 @@
     z-index: 5;
   }
 
-  .fret-cell input {
+  .note-cell {
     width: 85%;
     height: 70%;
     border: 2px solid rgba(255, 255, 255, 0.45);
@@ -148,30 +147,185 @@
     z-index: 1;
     opacity: 0.35;
     transition: border-color 0.2s, background-color 0.2s, opacity 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    line-height: 1;
   }
 
-  .fret-cell input:focus {
+  .note-cell:focus {
     opacity: 1;
     border-color: #fff;
     background: rgba(255, 255, 255, 0.15);
   }
 
-  .fret-cell input.has-value {
+  .note-cell.selected {
+    opacity: 1;
+    border-color: var(--accent);
+    background: rgba(233, 69, 96, 0.2);
+    box-shadow: 0 0 8px rgba(233, 69, 96, 0.4);
+  }
+
+  .note-cell.has-value {
     opacity: 1;
   }
 
-  .fret-cell input.wrong {
+  .note-cell.wrong {
     opacity: 1;
     border-color: var(--wrong);
     background: rgba(231, 76, 60, 0.2);
     color: #f7a9a2;
   }
 
-  .fret-cell input.hint-shown {
+  .note-cell.hint-shown {
     opacity: 1;
     border-color: #e67e22;
     background: rgba(230, 126, 34, 0.15);
     color: #e67e22;
+  }
+
+  /* ---- Note Picker (bottom sheet) ---- */
+  .note-picker-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 100;
+    justify-content: center;
+    align-items: flex-end;
+  }
+
+  .note-picker-overlay.active {
+    display: flex;
+  }
+
+  .note-picker {
+    width: 100%;
+    max-width: 480px;
+    background: #1e2a4a;
+    border-radius: 16px 16px 0 0;
+    padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom, 0px));
+    animation: pickerSlideUp 0.22s ease-out;
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.5);
+  }
+
+  @keyframes pickerSlideUp {
+    from { transform: translateY(100%); }
+    to   { transform: translateY(0); }
+  }
+
+  .picker-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.6rem;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+
+  .picker-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #fff;
+  }
+
+  .picker-close {
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.1);
+    color: #fff;
+    font-size: 1.1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .picker-close:active {
+    background: rgba(255,255,255,0.25);
+  }
+
+  .picker-section-label {
+    font-size: 0.75rem;
+    color: #888;
+    margin-bottom: 0.35rem;
+    margin-top: 0.6rem;
+  }
+
+  .picker-notes {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0.4rem;
+  }
+
+  .picker-notes.accidentals {
+    grid-template-columns: repeat(5, 1fr);
+    margin-top: 0.1rem;
+  }
+
+  .note-btn {
+    height: 46px;
+    border: 2px solid rgba(255,255,255,0.25);
+    border-radius: 8px;
+    background: rgba(255,255,255,0.08);
+    color: #fff;
+    font-size: 1.05rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.1s;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .note-btn:active {
+    transform: scale(0.9);
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .note-btn.accidental {
+    border-color: rgba(233, 69, 96, 0.4);
+    color: #f0707e;
+    font-size: 0.95rem;
+  }
+
+  .note-btn.accidental:active {
+    background: var(--accent);
+    color: #fff;
+  }
+
+  .picker-footer {
+    margin-top: 0.75rem;
+  }
+
+  .picker-clear {
+    width: 100%;
+    height: 42px;
+    border: 2px solid rgba(231, 76, 60, 0.35);
+    border-radius: 8px;
+    background: rgba(231, 76, 60, 0.08);
+    color: #e74c3c;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.1s;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .picker-clear:active {
+    background: #e74c3c;
+    color: #fff;
   }
 
   .stats {
@@ -241,6 +395,19 @@
 
 <div class="stats" id="stats"></div>
 
+<div class="note-picker-overlay" id="notePickerOverlay">
+  <div class="note-picker" id="notePicker">
+    <div class="picker-header">
+      <span class="picker-title">选择音名</span>
+      <button class="picker-close" id="pickerClose">✕</button>
+    </div>
+    <div id="pickerBody"></div>
+    <div class="picker-footer">
+      <button class="picker-clear" id="pickerClear">清除</button>
+    </div>
+  </div>
+</div>
+
 <script>
   const STRINGS = [
     { notes: ['E','F','F#','G','G#','A','A#','B','C','C#','D','D#','E'] },
@@ -252,19 +419,27 @@
   ];
 
   const NATURAL_NOTES = new Set(['C','D','E','F','G','A','B']);
-  const COLS_PER_ROW = 13;
+  const NATURAL_LIST  = ['C','D','E','F','G','A','B'];
+  const SHARP_LIST    = ['C#','D#','F#','G#','A#'];
+  const FLAT_LIST     = ['Db','Eb','Gb','Ab','Bb'];
+  const COLS_PER_ROW  = 13;
   const SINGLE_DOT_FRETS = [3, 5, 7, 9];
-  const DOUBLE_DOT_FRET = 12;
+  const DOUBLE_DOT_FRET  = 12;
 
-  const board    = document.getElementById('fingerboard');
-  const btnReset = document.getElementById('btnReset');
-  const btnHint  = document.getElementById('btnHint');
-  const btnMode  = document.getElementById('btnMode');
-  const statsEl  = document.getElementById('stats');
+  const board      = document.getElementById('fingerboard');
+  const btnReset   = document.getElementById('btnReset');
+  const btnHint    = document.getElementById('btnHint');
+  const btnMode    = document.getElementById('btnMode');
+  const statsEl    = document.getElementById('stats');
+  const overlay    = document.getElementById('notePickerOverlay');
+  const pickerBody = document.getElementById('pickerBody');
+  const pickerClose = document.getElementById('pickerClose');
+  const pickerClear = document.getElementById('pickerClear');
 
   let hintActive = false;
   let mode = 'natural';
   const userValues = {};
+  let selectedCell = null;
 
   function isNatural(si, fi) {
     return NATURAL_NOTES.has(STRINGS[si].notes[fi]);
@@ -276,7 +451,7 @@
 
   function getTotal() {
     let count = 0;
-    STRINGS.forEach((str, si) => {
+    STRINGS.forEach((_, si) => {
       for (let fi = 0; fi < COLS_PER_ROW; fi++) {
         if (isRelevant(si, fi)) count++;
       }
@@ -284,10 +459,19 @@
     return count;
   }
 
+  function getCellValue(el) {
+    return el.dataset.value || '';
+  }
+
+  function setCellValue(el, val) {
+    el.dataset.value = val;
+    el.textContent = val;
+  }
+
   function buildBoard() {
     board.innerHTML = '';
 
-    STRINGS.forEach((str, si) => {
+    STRINGS.forEach((_, si) => {
       for (let fi = 0; fi < COLS_PER_ROW; fi++) {
         const cell = document.createElement('div');
         cell.className = 'fret-cell';
@@ -301,20 +485,17 @@
           cell.classList.add('dot-mark');
         }
 
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.maxLength = 2;
-        input.setAttribute('autocomplete', 'off');
-        input.setAttribute('autocorrect', 'off');
-        input.setAttribute('autocapitalize', 'off');
-        input.setAttribute('spellcheck', 'false');
-        input.dataset.string = si;
-        input.dataset.fret = fi;
+        const noteCell = document.createElement('div');
+        noteCell.className = 'note-cell';
+        noteCell.tabIndex = 0;
+        noteCell.dataset.string = si;
+        noteCell.dataset.fret = fi;
+        noteCell.dataset.value = '';
 
-        input.addEventListener('input', onInput);
-        input.addEventListener('keydown', onKeyDown);
+        noteCell.addEventListener('click', onCellClick);
+        noteCell.addEventListener('keydown', onKeyDown);
 
-        cell.appendChild(input);
+        cell.appendChild(noteCell);
         board.appendChild(cell);
       }
     });
@@ -337,57 +518,201 @@
     return enharmonic[v] === correct || enharmonic[correct] === v;
   }
 
-  function onInput(e) {
-    const input = e.target;
-    const si = +input.dataset.string;
-    const fi = +input.dataset.fret;
-    const val = input.value;
-    userValues[`${si}-${fi}`] = val;
+  /* ---- Picker ---- */
 
-    const hasVal = val.trim() !== '';
-    input.classList.toggle('has-value', hasVal);
-    input.classList.remove('wrong');
-    if (hasVal && !isCorrect(si, fi, val)) {
-      input.classList.add('wrong');
+  function onCellClick(e) {
+    if (hintActive) return;
+    const el = e.currentTarget;
+    const si = +el.dataset.string;
+    const fi = +el.dataset.fret;
+    openPicker(si, fi, el);
+  }
+
+  function openPicker(si, fi, el) {
+    if (selectedCell && selectedCell.el) {
+      selectedCell.el.classList.remove('selected');
     }
+
+    selectedCell = { si, fi, el };
+    el.classList.add('selected');
+
+    pickerBody.innerHTML = '';
+
+    const naturalLabel = document.createElement('div');
+    naturalLabel.className = 'picker-section-label';
+    naturalLabel.textContent = '自然音';
+    pickerBody.appendChild(naturalLabel);
+
+    const naturalGrid = document.createElement('div');
+    naturalGrid.className = 'picker-notes';
+    NATURAL_LIST.forEach(note => {
+      const btn = document.createElement('button');
+      btn.className = 'note-btn';
+      btn.textContent = note;
+      btn.addEventListener('click', () => selectNote(note));
+      naturalGrid.appendChild(btn);
+    });
+    pickerBody.appendChild(naturalGrid);
+
+    if (mode === 'all') {
+      const sharpLabel = document.createElement('div');
+      sharpLabel.className = 'picker-section-label';
+      sharpLabel.textContent = '升号 Sharp';
+      pickerBody.appendChild(sharpLabel);
+
+      const sharpGrid = document.createElement('div');
+      sharpGrid.className = 'picker-notes accidentals';
+      SHARP_LIST.forEach(note => {
+        const btn = document.createElement('button');
+        btn.className = 'note-btn accidental';
+        btn.textContent = note;
+        btn.addEventListener('click', () => selectNote(note));
+        sharpGrid.appendChild(btn);
+      });
+      pickerBody.appendChild(sharpGrid);
+
+      const flatLabel = document.createElement('div');
+      flatLabel.className = 'picker-section-label';
+      flatLabel.textContent = '降号 Flat';
+      pickerBody.appendChild(flatLabel);
+
+      const flatGrid = document.createElement('div');
+      flatGrid.className = 'picker-notes accidentals';
+      FLAT_LIST.forEach(note => {
+        const btn = document.createElement('button');
+        btn.className = 'note-btn accidental';
+        btn.textContent = note;
+        btn.addEventListener('click', () => selectNote(note));
+        flatGrid.appendChild(btn);
+      });
+      pickerBody.appendChild(flatGrid);
+    }
+
+    overlay.classList.add('active');
+  }
+
+  function selectNote(note) {
+    if (!selectedCell) return;
+    const { si, fi, el } = selectedCell;
+
+    setCellValue(el, note);
+    userValues[`${si}-${fi}`] = note;
+
+    el.classList.add('has-value');
+    el.classList.remove('wrong');
+    if (!isCorrect(si, fi, note)) {
+      el.classList.add('wrong');
+    }
+
+    closePicker();
     updateStats();
   }
 
-  function onKeyDown(e) {
-    const si = +e.target.dataset.string;
-    const fi = +e.target.dataset.fret;
-    const allInputs = [...board.querySelectorAll('input')];
-    const idx = si * COLS_PER_ROW + fi;
+  function clearSelectedCell() {
+    if (!selectedCell) return;
+    const { si, fi, el } = selectedCell;
 
+    setCellValue(el, '');
+    delete userValues[`${si}-${fi}`];
+    el.classList.remove('has-value', 'wrong');
+
+    closePicker();
+    updateStats();
+  }
+
+  function closePicker() {
+    overlay.classList.remove('active');
+    if (selectedCell && selectedCell.el) {
+      selectedCell.el.classList.remove('selected');
+      selectedCell.el.focus();
+    }
+    selectedCell = null;
+  }
+
+  /* ---- Keyboard (desktop) ---- */
+
+  function onKeyDown(e) {
+    const el = e.target;
+    if (!el.classList.contains('note-cell')) return;
+
+    const si = +el.dataset.string;
+    const fi = +el.dataset.fret;
+    const allCells = [...board.querySelectorAll('.note-cell')];
+    const idx = si * COLS_PER_ROW + fi;
     let nextIdx = -1;
+
     if (e.key === 'ArrowRight' || (e.key === 'Tab' && !e.shiftKey)) {
       e.preventDefault();
-      nextIdx = (idx + 1) % allInputs.length;
+      nextIdx = (idx + 1) % allCells.length;
     } else if (e.key === 'ArrowLeft' || (e.key === 'Tab' && e.shiftKey)) {
       e.preventDefault();
-      nextIdx = (idx - 1 + allInputs.length) % allInputs.length;
+      nextIdx = (idx - 1 + allCells.length) % allCells.length;
     } else if (e.key === 'ArrowDown') {
       e.preventDefault();
-      nextIdx = idx + COLS_PER_ROW < allInputs.length ? idx + COLS_PER_ROW : idx;
+      nextIdx = idx + COLS_PER_ROW < allCells.length ? idx + COLS_PER_ROW : idx;
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       nextIdx = idx - COLS_PER_ROW >= 0 ? idx - COLS_PER_ROW : idx;
-    } else if (e.key === 'Enter') {
+    } else if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      nextIdx = (idx + 1) % allInputs.length;
+      if (!hintActive) openPicker(si, fi, el);
+      return;
+    } else if (e.key === 'Backspace' || e.key === 'Delete') {
+      e.preventDefault();
+      if (!hintActive) {
+        setCellValue(el, '');
+        delete userValues[`${si}-${fi}`];
+        el.classList.remove('has-value', 'wrong');
+        updateStats();
+      }
+      return;
     }
 
-    if (nextIdx >= 0 && nextIdx < allInputs.length) {
-      allInputs[nextIdx].focus();
-      allInputs[nextIdx].select();
+    const letter = e.key.toUpperCase();
+    if ('CDEFGAB'.includes(letter) && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault();
+      if (!hintActive) {
+        setCellValue(el, letter);
+        userValues[`${si}-${fi}`] = letter;
+        el.classList.add('has-value');
+        el.classList.remove('wrong');
+        if (!isCorrect(si, fi, letter)) {
+          el.classList.add('wrong');
+        }
+        updateStats();
+      }
+      return;
+    }
+
+    if (e.key === '#' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault();
+      if (!hintActive) {
+        const cur = getCellValue(el);
+        if (cur.length === 1 && 'CDEFGAB'.includes(cur.toUpperCase())) {
+          const newVal = cur + '#';
+          setCellValue(el, newVal);
+          userValues[`${si}-${fi}`] = newVal;
+          el.classList.remove('wrong');
+          if (!isCorrect(si, fi, newVal)) {
+            el.classList.add('wrong');
+          }
+          updateStats();
+        }
+      }
+      return;
+    }
+
+    if (nextIdx >= 0 && nextIdx < allCells.length) {
+      allCells[nextIdx].focus();
     }
   }
 
+  /* ---- Board actions ---- */
+
   function resetBoard() {
-    board.querySelectorAll('input').forEach(input => {
-      input.value = '';
-      input.classList.remove('wrong', 'hint-shown', 'has-value');
-      input.readOnly = false;
+    board.querySelectorAll('.note-cell').forEach(el => {
+      setCellValue(el, '');
+      el.classList.remove('wrong', 'hint-shown', 'has-value', 'selected');
     });
     Object.keys(userValues).forEach(k => delete userValues[k]);
     hintActive = false;
@@ -398,43 +723,41 @@
 
   function toggleHint() {
     hintActive = !hintActive;
-    const inputs = board.querySelectorAll('input');
+    const cells = board.querySelectorAll('.note-cell');
 
     if (hintActive) {
       btnHint.classList.add('active');
       btnHint.textContent = '取消提示';
-      inputs.forEach(input => {
-        const si = +input.dataset.string;
-        const fi = +input.dataset.fret;
+      cells.forEach(el => {
+        const si = +el.dataset.string;
+        const fi = +el.dataset.fret;
         const key = `${si}-${fi}`;
-        if (!(key in userValues)) userValues[key] = input.value;
+        if (!(key in userValues)) userValues[key] = getCellValue(el);
 
         if (isRelevant(si, fi)) {
-          input.value = STRINGS[si].notes[fi];
-          input.classList.remove('wrong', 'has-value');
-          input.classList.add('hint-shown');
+          setCellValue(el, STRINGS[si].notes[fi]);
+          el.classList.remove('wrong', 'has-value');
+          el.classList.add('hint-shown');
         } else {
-          input.classList.remove('wrong', 'has-value', 'hint-shown');
+          el.classList.remove('wrong', 'has-value', 'hint-shown');
         }
-        input.readOnly = true;
       });
     } else {
       btnHint.classList.remove('active');
       btnHint.textContent = '提示';
-      inputs.forEach(input => {
-        const si = +input.dataset.string;
-        const fi = +input.dataset.fret;
+      cells.forEach(el => {
+        const si = +el.dataset.string;
+        const fi = +el.dataset.fret;
         const key = `${si}-${fi}`;
         const saved = userValues[key] || '';
-        input.value = saved;
-        input.classList.remove('hint-shown');
-        input.readOnly = false;
+        setCellValue(el, saved);
+        el.classList.remove('hint-shown');
 
         const hasVal = saved.trim() !== '';
-        input.classList.toggle('has-value', hasVal);
-        input.classList.remove('wrong');
+        el.classList.toggle('has-value', hasVal);
+        el.classList.remove('wrong');
         if (hasVal && !isCorrect(si, fi, saved)) {
-          input.classList.add('wrong');
+          el.classList.add('wrong');
         }
       });
     }
@@ -453,16 +776,16 @@
   }
 
   function updateStats() {
-    const inputs = board.querySelectorAll('input');
+    const cells = board.querySelectorAll('.note-cell');
     let filled = 0, correct = 0, wrong = 0;
     const total = getTotal();
 
-    inputs.forEach(input => {
-      const si = +input.dataset.string;
-      const fi = +input.dataset.fret;
+    cells.forEach(el => {
+      const si = +el.dataset.string;
+      const fi = +el.dataset.fret;
       if (!isRelevant(si, fi)) return;
 
-      const val = hintActive ? (userValues[`${si}-${fi}`] || '') : input.value;
+      const val = hintActive ? (userValues[`${si}-${fi}`] || '') : getCellValue(el);
       if (val.trim() !== '') {
         filled++;
         if (isCorrect(si, fi, val)) correct++; else wrong++;
@@ -470,6 +793,12 @@
     });
     statsEl.innerHTML = `已填写 <span>${filled}</span> / ${total} &nbsp;|&nbsp; <span class="green">正确 ${correct}</span> &nbsp;|&nbsp; <span class="red">错误 ${wrong}</span>`;
   }
+
+  pickerClose.addEventListener('click', closePicker);
+  pickerClear.addEventListener('click', clearSelectedCell);
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closePicker();
+  });
 
   btnReset.addEventListener('click', resetBoard);
   btnHint.addEventListener('click', toggleHint);
